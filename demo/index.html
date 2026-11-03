@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Бот записи клиентов — демо</title>
+<style>
+:root {
+  --bg: #0b1220; --panel: #111a2e; --panel-2: #16213a; --line: #24324d;
+  --text: #f1f5f9; --muted: #94a3b8; --accent: #38bdf8; --accent-2: #6366f1;
+  --bubble-bot: #1e293b; --bubble-me: #2563eb; --ok: #14532d; --btn: #0f2a44; --btn-text: #7dd3fc; --btn-line: #1d4b70;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: var(--text); min-height: 100vh;
+  background: radial-gradient(circle at 85% 10%, #1e3a8a 0%, transparent 40%),
+              radial-gradient(circle at 5% 95%, #0e7490 0%, transparent 40%), var(--bg);
+}
+.page { max-width: 1180px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: 1fr 400px; gap: 56px; align-items: start; }
+h1 { font-size: 52px; line-height: 1.05; font-weight: 800; letter-spacing: -1.5px; }
+h1 span { color: var(--accent); }
+.lead { font-size: 20px; color: var(--muted); margin-top: 16px; line-height: 1.5; max-width: 560px; }
+.features { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 32px; }
+.f { background: rgba(148,163,184,.08); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+.f b { display: block; font-size: 17px; margin-bottom: 6px; }
+.f p { font-size: 15px; color: var(--muted); line-height: 1.45; }
+.tag { display: inline-block; font-size: 13px; font-weight: 700; color: var(--bg); background: var(--accent); border-radius: 999px; padding: 4px 12px; margin-bottom: 18px; letter-spacing: .3px; }
+.hint { margin-top: 28px; font-size: 15px; color: var(--muted); }
+.hint b { color: var(--text); }
+
+/* owner notifications */
+.owner { margin-top: 28px; }
+.owner h3 { font-size: 15px; color: var(--muted); font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .6px; }
+.notes { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+.note { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; padding: 12px 16px; font-size: 15px; line-height: 1.45; animation: pop .35s ease; }
+.note.cancel { border-left-color: #f87171; }
+.note small { color: var(--muted); }
+.empty { font-size: 15px; color: #64748b; font-style: italic; }
+
+/* phone */
+.phone { position: sticky; top: 24px; height: 760px; border-radius: 48px; background: var(--panel); border: 3px solid #2b3a55; box-shadow: 0 30px 80px rgba(0,0,0,.55); display: flex; flex-direction: column; overflow: hidden; }
+.bar { display: flex; align-items: center; gap: 12px; padding: 22px 22px 14px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.ava { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; flex: none; }
+.ava svg { width: 24px; height: 24px; }
+.bname { font-weight: 700; font-size: 17px; } .bstat { font-size: 13px; color: var(--accent); }
+.restart { margin-left: auto; background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.restart:hover { color: var(--text); }
+.chat { flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+.chat::-webkit-scrollbar { width: 6px; } .chat::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.msg { max-width: 88%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.45; white-space: pre-line; animation: pop .25s ease; }
+.msg.bot { background: var(--bubble-bot); align-self: flex-start; border-bottom-left-radius: 6px; }
+.msg.me { background: var(--bubble-me); align-self: flex-end; border-bottom-right-radius: 6px; }
+.msg.ok { background: var(--ok); }
+.kb { display: grid; gap: 6px; align-self: stretch; animation: pop .25s ease; }
+.kb button { background: var(--btn); color: var(--btn-text); border: 1px solid var(--btn-line); border-radius: 12px; padding: 10px 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
+.kb button:hover:not(:disabled) { background: #13385a; }
+.kb button:disabled { opacity: .45; cursor: default; }
+.typing { align-self: flex-start; background: var(--bubble-bot); border-radius: 18px; padding: 12px 16px; display: flex; gap: 4px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+.input { display: flex; gap: 8px; padding: 12px 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.input input { flex: 1; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 15px; outline: none; }
+.input input:focus { border-color: var(--accent); }
+.input button { background: var(--accent); color: var(--bg); border: none; border-radius: 14px; padding: 0 16px; font: inherit; font-weight: 700; cursor: pointer; }
+.input input:disabled, .input button:disabled { opacity: .4; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+@media (max-width: 920px) {
+  .page { grid-template-columns: 1fr; gap: 32px; padding: 32px 16px; }
+  .phone { position: static; height: 680px; order: -1; }
+  h1 { font-size: 38px; }
+  .features { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <section>
+    <div class="tag">ДЕМО · TELEGRAM-БОТ</div>
+    <h1>Бот для записи клиентов <span>24/7</span></h1>
+    <p class="lead">Клиенты сами выбирают услугу и свободное время, а владелец сразу получает уведомление. Без звонков, переписок и путаницы в тетрадке.</p>
+
+    <div class="features">
+      <div class="f"><b>👥 Несколько мастеров</b><p>У каждого своё расписание. Клиент выбирает мастера или «любого свободного» — двойной записи не будет.</p></div>
+      <div class="f"><b>⏰ Напоминания</b><p>Клиент получает напоминание за 2 часа — меньше «забыл и не пришёл».</p></div>
+      <div class="f"><b>🔔 Уведомления владельцу</b><p>О каждой новой записи и отмене — сразу в Telegram.</p></div>
+      <div class="f"><b>🛠 Панель администратора</b><p>Записи на сегодня, завтра и неделю, выручка, отмена в один клик.</p></div>
+    </div>
+
+    <div class="owner">
+      <h3>🔔 Так видит уведомления владелец</h3>
+      <div class="notes" id="notes"><div class="empty">Запишитесь в боте справа — уведомление появится здесь.</div></div>
+    </div>
+
+    <p class="hint">👉 <b>Попробуйте сами:</b> нажимайте кнопки в телефоне справа.</p>
+  </section>
+
+  <div class="phone">
+    <div class="bar">
+      <div class="ava"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01"/></svg></div>
+      <div><div class="bname">Салон «Лаванда»</div><div class="bstat">бот</div></div>
+      <button class="restart" id="restart">↺ Заново</button>
+    </div>
+    <div class="chat" id="chat"></div>
+    <form class="input" id="form">
+      <input id="text" placeholder="Сообщение" autocomplete="off" disabled>
+      <button id="send" disabled>➤</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const SALON = { name: "Салон красоты «Лаванда»", address: "г. Витебск, ул. Примерная, 1", phone: "+375 29 000-00-00", hours: "Пн–Сб: 9:00–20:00, Вс — выходной" };
+const SERVICES = [
+  { id: 1, emoji: "💇‍♀️", title: "Женская стрижка", price: 35, duration: 60 },
+  { id: 2, emoji: "💇‍♂️", title: "Мужская стрижка", price: 20, duration: 30 },
+  { id: 3, emoji: "🎨", title: "Окрашивание", price: 90, duration: 120 },
+  { id: 4, emoji: "💅", title: "Маникюр с покрытием", price: 40, duration: 90 },
+  { id: 5, emoji: "✨", title: "Укладка", price: 25, duration: 30 },
+];
+const MASTERS = [
+  { id: 1, name: "Ольга", role: "стилист-парикмахер", services: [1, 2, 3, 5] },
+  { id: 2, name: "Дмитрий", role: "барбер", services: [2] },
+  { id: 3, name: "Ирина", role: "мастер маникюра", services: [4] },
+];
+const WD = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const chat = document.getElementById("chat"), notes = document.getElementById("notes");
+const input = document.getElementById("text"), send = document.getElementById("send");
+
+let booking = {}, bookings = [], expectText = null, nextId = 1;
+
+// Демонстрационно «занятые» окна у каждого мастера, чтобы сетка выглядела живой
+const busySeed = { 1: ["10:00","10:30","13:00","16:00"], 2: ["11:00","14:30","17:00"], 3: ["10:00","13:30"] };
+
+const fmtDate = d => `${WD[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+const pad = n => String(n).padStart(2, "0");
+const hm = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function scroll() { chat.scrollTop = chat.scrollHeight; }
+
+function lockOldKeyboards() { chat.querySelectorAll(".kb button").forEach(b => b.disabled = true); }
+
+function me(text) { lockOldKeyboards(); const el = document.createElement("div"); el.className = "msg me"; el.textContent = text; chat.appendChild(el); scroll(); }
+
+async function bot(html, buttons = [], cols = 1, extra = "") {
+  const t = document.createElement("div"); t.className = "typing"; t.innerHTML = "<i></i><i></i><i></i>";
+  chat.appendChild(t); scroll(); await sleep(450); t.remove();
+  const el = document.createElement("div"); el.className = "msg bot " + extra; el.innerHTML = html; chat.appendChild(el);
+  if (buttons.length) {
+    const kb = document.createElement("div"); kb.className = "kb"; kb.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    for (const [label, fn, span] of buttons) {
+      const b = document.createElement("button"); b.textContent = label; if (span) b.style.gridColumn = `span ${span}`;
+      b.onclick = () => { me(label); fn(); }; kb.appendChild(b);
+    }
+    chat.appendChild(kb);
+  }
+  scroll();
+}
+
+function setInput(placeholder, handler) {
+  expectText = handler; input.disabled = send.disabled = !handler;
+  input.placeholder = placeholder || "Сообщение"; if (handler) input.focus();
+}
+
+document.getElementById("form").onsubmit = e => {
+  e.preventDefault(); const v = input.value.trim(); if (!v || !expectText) return;
+  input.value = ""; me(v); const h = expectText; setInput(null, null); h(v);
+};
+
+const mastersFor = service => MASTERS.filter(m => m.services.includes(service.id));
+const candidates = () => booking.masterId ? MASTERS.filter(m => m.id === booking.masterId) : mastersFor(booking.service);
+
+function days() {
+  const res = []; const d = new Date(); d.setHours(0,0,0,0);
+  for (let i = 0; i < 7; i++) { const x = new Date(d); x.setDate(d.getDate() + i); if (x.getDay() !== 0 && slotsAny(x).length) res.push(x); }
+  return res;
+}
+
+// Время, свободное хотя бы у одного подходящего мастера
+function slotsAny(day) {
+  const set = new Set(); for (const m of candidates()) slots(day, booking.service.duration, m.id).forEach(t => set.add(t));
+  return [...set].sort((a, b) => a - b);
+}
+const pickMaster = (day, t) => candidates().find(m => slots(day, booking.service.duration, m.id).includes(t));
+
+function slots(day, duration, masterId) {
+  const busy = busySeed[masterId].map(s => { const [h, m] = s.split(":").map(Number); return [h * 60 + m, h * 60 + m + 30]; });
+  for (const b of bookings) if (b.master.id === masterId && b.day.toDateString() === day.toDateString()) busy.push([b.start, b.start + b.duration]);
+  const now = new Date(); const isToday = day.toDateString() === now.toDateString();
+  const earliest = isToday ? now.getHours() * 60 + now.getMinutes() + 60 : 0;
+  const res = [];
+  for (let t = 9 * 60; t + duration <= 20 * 60; t += 30)
+    if (t >= earliest && !busy.some(([s, e]) => t < e && t + duration > s)) res.push(t);
+  return res;
+}
+
+function summary() {
+  const s = booking.service;
+  return `💇 Услуга: <b>${s.title}</b>\n👤 Мастер: <b>${booking.master.name}</b>\n📅 Дата: <b>${fmtDate(booking.day)}</b>\n🕐 Время: <b>${hm(booking.start)}–${hm(booking.start + s.duration)}</b>\n💰 Стоимость: <b>${s.price} р.</b>\n👤 Имя: <b>${booking.name}</b>\n📱 Телефон: <b>${booking.phone}</b>`;
+}
+
+function ownerNote(html, cls = "") {
+  notes.querySelector(".empty")?.remove();
+  const n = document.createElement("div"); n.className = "note " + cls; n.innerHTML = html; notes.prepend(n);
+}
+
+// ---------- Сценарии ----------
+async function start() {
+  setInput(null, null);
+  await bot(`Здравствуйте, Анна! 👋\n\nЯ бот <b>${SALON.name}</b>.\nПомогу записаться на услугу за минуту — без звонков и ожидания.\n\nВыберите, что вас интересует:`,
+    [["📅 Записаться", chooseService, 2], ["🗂 Мои записи", myBookings, 2], ["💅 Услуги и цены", prices], ["📍 Контакты", contacts]], 2);
+}
+
+async function chooseService() {
+  booking = {};
+  await bot("Выберите услугу:", [...SERVICES.map(s => [`${s.emoji} ${s.title} — ${s.price} р.`, () => chooseMaster(s)]), ["🏠 В меню", start]]);
+}
+
+const masterLabel = () => booking.masterId ? `👤 ${MASTERS.find(m => m.id === booking.masterId).name}` : "✨ Любой свободный мастер";
+
+async function chooseMaster(service) {
+  booking = { service };
+  const ms = mastersFor(service);
+  if (ms.length === 1) { booking.masterId = ms[0].id; return chooseDay(); }
+  await bot(`${service.emoji} <b>${service.title}</b> · ${service.price} р.\n\nК кому хотите записаться?`,
+    [["✨ Любой свободный мастер", () => { booking.masterId = 0; chooseDay(); }],
+     ...ms.map(m => [`👤 ${m.name} — ${m.role}`, () => { booking.masterId = m.id; chooseDay(); }]),
+     ["⬅️ К услугам", chooseService], ["✖️ Отмена", cancelFlow]]);
+}
+
+async function chooseDay() {
+  const service = booking.service, multi = mastersFor(service).length > 1;
+  await bot(`${service.emoji} <b>${service.title}</b> · ${service.price} р.\n${masterLabel()}\n\nВыберите дату:`,
+    [...days().map(d => [`${WD[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 4)}.`, () => chooseTime(d)]),
+     multi ? ["⬅️ К мастерам", () => chooseMaster(service)] : ["⬅️ К услугам", chooseService], ["✖️ Отмена", cancelFlow]], 2);
+}
+
+async function chooseTime(day) {
+  booking.day = day;
+  const s = booking.service;
+  await bot(`${s.emoji} <b>${s.title}</b>\n${masterLabel()}\n📅 ${fmtDate(day)}\n\nВыберите время:`,
+    [...slotsAny(day).map(t => [hm(t), () => askName(t)]), ["⬅️ К датам", chooseDay, 2], ["✖️ Отмена", cancelFlow, 2]], 4);
+}
+
+async function askName(t) {
+  booking.start = t;
+  booking.master = pickMaster(booking.day, t);
+  await bot(`🕐 ${fmtDate(booking.day)}, ${hm(t)} · мастер ${booking.master.name}\n\nКак к вам обращаться? Напишите имя или нажмите кнопку:`,
+    [["👤 Анна", () => { booking.name = "Анна"; askPhone(); }], ["✖️ Отмена", cancelFlow]]);
+  setInput("Ваше имя", v => { booking.name = v.slice(0, 50); askPhone(); });
+}
+
+async function askPhone() {
+  setInput(null, null);
+  await bot("📱 Оставьте номер телефона — мастер свяжется, если что-то изменится.\n\nНажмите кнопку ниже или напишите номер вручную.",
+    [["📱 Отправить мой номер", () => { booking.phone = "+375291234567"; confirm(); }]]);
+  setInput("+375 29 123-45-67", typedPhone);
+}
+
+function typedPhone(v) {
+  const digits = v.replace(/\D/g, "");
+  if (digits.length < 9 || digits.length > 15) {
+    bot("Не похоже на номер телефона 🤔 Пример: +375 29 123-45-67").then(() => setInput("+375 29 123-45-67", typedPhone));
+    return;
+  }
+  booking.phone = (v.trim().startsWith("+") ? "+" : "") + digits; confirm();
+}
+
+async function confirm() {
+  setInput(null, null);
+  await bot("Номер сохранён 👍");
+  await bot(`<b>Проверьте запись:</b>\n\n${summary()}\n\nВсё верно?`, [["✅ Подтвердить", done], ["✖️ Отменить", cancelFlow]]);
+}
+
+async function done() {
+  const b = { id: nextId++, ...booking, duration: booking.service.duration };
+  bookings.push(b);
+  await bot(`✅ <b>Вы записаны!</b>\n\n${summary()}\n\n📍 ${SALON.address}\n\nНапомню о визите за 2 ч. Отменить запись можно в разделе «Мои записи».`, [["🏠 В меню", start]], 1, "ok");
+  ownerNote(`🆕 <b>Новая запись #${b.id}</b><br>${b.service.title} · мастер ${b.master.name} · ${fmtDate(b.day)}, ${hm(b.start)}<br><small>👤 ${b.name}, ${b.phone} · ${b.service.price} р.</small>`);
+}
+
+async function cancelFlow() { setInput(null, null); booking = {}; await bot("Запись не оформлена. Возвращайтесь, когда будет удобно 🙂", [["🏠 В меню", start]]); }
+
+async function myBookings() {
+  if (!bookings.length) { await bot("🗂 У вас пока нет предстоящих записей.", [["📅 Новая запись", chooseService], ["🏠 В меню", start]], 2); return; }
+  const lines = bookings.map(b => `• <b>${fmtDate(b.day)}, ${hm(b.start)}</b> — ${b.service.title}, ${b.service.price} р.`).join("\n");
+  await bot(`🗂 <b>Ваши записи</b>\n\n${lines}`,
+    [...bookings.map(b => [`❌ Отменить ${b.day.getDate()} ${MONTHS[b.day.getMonth()].slice(0, 4)}. ${hm(b.start)}`, () => cancelBooking(b), 2]), ["📅 Новая запись", chooseService], ["🏠 В меню", start]], 2);
+}
+
+async function cancelBooking(b) {
+  bookings = bookings.filter(x => x !== b);
+  ownerNote(`❌ <b>Клиент отменил запись #${b.id}</b><br>${b.service.title} · ${fmtDate(b.day)}, ${hm(b.start)}<br><small>👤 ${b.name}, ${b.phone}</small>`, "cancel");
+  await bot("Запись отменена ✅");
+  myBookings();
+}
+
+async function prices() {
+  await bot("💅 <b>Услуги и цены</b>\n\n" + SERVICES.map(s => `${s.emoji} <b>${s.title}</b> — ${s.price} р. · ${s.duration} мин`).join("\n"), [["📅 Записаться", chooseService], ["🏠 В меню", start]]);
+}
+
+async function contacts() {
+  await bot(`📍 <b>${SALON.name}</b>\n\nАдрес: ${SALON.address}\nТелефон: ${SALON.phone}\nЧасы работы: ${SALON.hours}`, [["🏠 В меню", start]]);
+}
+
+document.getElementById("restart").onclick = () => { chat.innerHTML = ""; booking = {}; start(); };
+
+(async () => { const el = document.createElement("div"); el.className = "msg me"; el.textContent = "/start"; chat.appendChild(el); await start(); })();
+</script>
+</body>
+</html>
